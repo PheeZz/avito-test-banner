@@ -124,11 +124,10 @@ class BannerDAO:
                 return banner_orm
 
     @classmethod
-    async def update_banner(
-        cls, banner_orm: models.BannerORM, banner: schemas.CreateUpdateBannerSchema
-    ) -> None:
+    async def update_banner(cls, banner_id: int, banner: schemas.CreateUpdateBannerSchema) -> None:
         async with async_session_factory() as session:
             async with session.begin():
+                banner_orm = await session.get(models.BannerORM, banner_id)
                 banner_orm.title = banner.content.title
                 banner_orm.text = banner.content.text
                 banner_orm.url = banner.content.url
@@ -263,16 +262,14 @@ class BannerDAO:
     @classmethod
     async def update_relation_banner_tag(
         cls,
-        banner_orm: models.BannerORM,
+        banner_id: int,
         tag_id: int | Iterable[int],
     ) -> None:
         async with async_session_factory() as session:
             async with session.begin():
                 await session.execute(
-                    delete(models.BannerTagORM).filter(
-                        models.BannerTagORM.banner_id == banner_orm.id
-                    )
+                    delete(models.BannerTagORM).filter(models.BannerTagORM.banner_id == banner_id)
                 )
                 await session.flush()
-                await cls.create_relation_banner_tag(banner_orm.id, tag_id)
+                await cls.create_relation_banner_tag(banner_id, tag_id)
                 return

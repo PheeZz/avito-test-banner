@@ -147,6 +147,7 @@ async def post_new_banner(
         Depends(dependencies.add_tags_if_not_exist),
         Depends(dependencies.add_feature_if_not_exist),
         Depends(dependencies.check_admin_token_header),
+        Depends(dependencies.get_banner_by_id),
     ],
     responses={
         status.HTTP_200_OK: {
@@ -169,13 +170,13 @@ async def post_new_banner(
 )
 async def patch_banner(
     banner: schemas.CreateUpdateBannerSchema,
-    banner_orm=Depends(dependencies.get_banner_by_id),
+    id: int,
 ):
     """
     Допустимо использование только с админским токеном
     """
     await service.update_banner(
-        banner_orm=banner_orm,
+        banner_id=id,
         banner=banner,
     )
 

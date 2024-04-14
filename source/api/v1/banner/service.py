@@ -19,10 +19,11 @@ async def delete_banner(banner_orm: models.BannerORM) -> None:
 
 
 async def update_banner(
-    banner_orm: models.BannerORM, banner: schemas.CreateUpdateBannerSchema
+    banner_id: int,
+    banner: schemas.CreateUpdateBannerSchema,
 ) -> None:
-    await BannerDAO.update_banner(banner_orm, banner)
-    await BannerDAO.update_relation_banner_tag(banner_orm, banner.tag_ids)
+    await BannerDAO.update_banner(banner_id, banner)
+    await BannerDAO.update_relation_banner_tag(banner_id, banner.tag_ids)
 
 
 async def get_user_banner(
