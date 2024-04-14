@@ -42,7 +42,7 @@ class CreateUpdateBannerSchema(BaseModel):
     active: bool = Field(
         title="Активность баннера",
         examples=[True],
-        serialization_alias="is_active",
+        alias="is_active",
     )
 
     @field_validator("tag_ids")
@@ -150,4 +150,14 @@ class ErrorNoFeatureOrTagIdProvidedSchema(BaseModel):
         examples=[
             "Не переданы идентификаторы фичи или тега. Хотя бы один параметр должен быть передан"
         ],
+    )
+
+
+class ErrorTagAndFeatureRelationAlreadyExistSchema(BaseModel):
+    """Code: 400"""
+
+    detail: str = Field(
+        title="Сообщение об ошибке",
+        description="Отношение между фичей и тегом уже существует",
+        examples=["Отношение между фичей и тегом уже существует"],
     )

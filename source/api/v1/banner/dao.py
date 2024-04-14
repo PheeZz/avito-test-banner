@@ -35,7 +35,24 @@ class BannerDAO:
                 banner_orm = await session.execute(
                     select(models.BannerORM).filter(models.BannerORM.id == banner_id)
                 )
-                return banner_orm.scalar_one_or_none()
+                banner_orm = banner_orm.scalar_one_or_none()
+                if not banner_orm:
+                    return None
+                session.expunge(banner_orm)
+                return banner_orm
+
+    @classmethod
+    async def get_banner_tags(cls, banner_id: int) -> list[int]:
+        async with async_session_factory() as session:
+            async with session.begin():
+                bt = aliased(models.BannerTagORM)
+                query = select(bt.tag_id).filter(bt.banner_id == banner_id)
+                result = await session.execute(query)
+                tag_ids = result.scalars().all()
+                if not tag_ids:
+                    return []
+                session.expunge_all()
+                return tag_ids
 
     @classmethod
     async def get_banners(
@@ -100,13 +117,15 @@ class BannerDAO:
 
                 banner_orm = await session.execute(query)
                 banner_orm = banner_orm.scalar_one_or_none()
+                if not banner_orm:
+                    return None
                 session.expunge(banner_orm)
 
                 return banner_orm
 
     @classmethod
     async def update_banner(
-        banner_orm: models.BannerORM, banner: schemas.CreateUpdateBannerSchema
+        cls, banner_orm: models.BannerORM, banner: schemas.CreateUpdateBannerSchema
     ) -> None:
         async with async_session_factory() as session:
             async with session.begin():

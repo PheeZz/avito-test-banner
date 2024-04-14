@@ -38,7 +38,7 @@ async def get_user_banner(
     use_last_revision: bool = False,
     user_type: Literal["admin", "user"] = Depends(dependencies.get_user_type_by_token),
 ):
-    if use_last_revision:
+    if not use_last_revision:
         banner = await service.get_cached_user_banner(
             tag_id=tag_id,
             feature_id=feature_id,
@@ -108,6 +108,10 @@ async def get_banner(
             "description": "Баннер успешно создан",
             "model": schemas.BannerSuccessfullyCreatedSchema,
         },
+        status.HTTP_400_BAD_REQUEST: {
+            "description": "Нарушение уникальности отношения фичи и тега",
+            "model": schemas.ErrorTagAndFeatureRelationAlreadyExistSchema,
+        },
         status.HTTP_401_UNAUTHORIZED: {
             "description": "Пользователь не авторизован",
             "model": schemas.ErrorUserNotAuthorizedSchema,
@@ -119,6 +123,7 @@ async def get_banner(
         status.HTTP_500_INTERNAL_SERVER_ERROR: INTERNAL_SERVER_ERROR_SWAGGER_RESPONSE,
     },
     dependencies=[
+        Depends(dependencies.check_feat_and_tag_ids_not_violate_rules),
         Depends(dependencies.add_tags_if_not_exist),
         Depends(dependencies.add_feature_if_not_exist),
         Depends(dependencies.check_admin_token_header),
@@ -166,6 +171,9 @@ async def patch_banner(
     banner: schemas.CreateUpdateBannerSchema,
     banner_orm=Depends(dependencies.get_banner_by_id),
 ):
+    """
+    Допустимо использование только с админским токеном
+    """
     await service.update_banner(
         banner_orm=banner_orm,
         banner=banner,
@@ -201,6 +209,9 @@ async def patch_banner(
 async def delete_banner(
     banner_orm=Depends(dependencies.get_banner_by_id),
 ) -> None:
+    """
+    Допустимо использование только с админским токеном
+    """
     await service.delete_banner(banner_orm=banner_orm)
 
 
@@ -245,6 +256,9 @@ async def delete_banner_by_feat_or_tag_id(
     feature_id: int = None,
     tag_id: int = None,
 ):
+    """
+    Допустимо использование только с админским токеном
+    """
     await service.delete_banners_by_feat_or_tag_id(
         feature_id=feature_id,
         tag_id=tag_id,

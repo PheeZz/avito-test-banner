@@ -12,6 +12,7 @@ from .exceptions import (
     ErrorUserHaveNoAccess,
     ErrorUserNotAuthorized,
     ErrorValueMustBeGTEZero,
+    ErrorTagAndFeatureRelationAlreadyExist,
 )
 
 logger = logging.getLogger(__name__)
@@ -73,3 +74,18 @@ def check_limit_gt_zero(limit: int = 10) -> int:
     if limit < 0:
         raise ErrorValueMustBeGTEZero(value=limit, field="limit")
     return limit
+
+
+async def check_feat_and_tag_ids_not_violate_rules(
+    banner: schemas.CreateUpdateBannerSchema,
+):
+    for tag_id in banner.tag_ids:
+        if db_banner := await BannerDAO.get_banner_by_tag_and_feature(
+            feature_id=banner.feature_id, tag_id=tag_id
+        ):
+            tags_db = await BannerDAO.get_banner_tags(db_banner.id)
+            # find all tags that that exist in banner.tag_ids and in tags_db
+            common_tags = set(banner.tag_ids).intersection(tags_db)
+            raise ErrorTagAndFeatureRelationAlreadyExist(
+                feature_id=banner.feature_id, tag_id=common_tags, banner_id=db_banner.id
+            )

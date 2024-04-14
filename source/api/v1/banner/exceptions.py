@@ -10,6 +10,19 @@ class ErrorBannerNotActive(HTTPException):
         )
 
 
+class ErrorTagAndFeatureRelationAlreadyExist(HTTPException):
+
+    def __init__(self, feature_id: int, tag_id: int, banner_id: int):
+        detail = (
+            f"Отношение между фичей {feature_id} и тегом(-ами) {tag_id} уже существует."
+            f"banner_id: {banner_id}"
+        )
+        super().__init__(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=detail,
+        )
+
+
 class ErrorUserNotAuthorized(HTTPException):
     def __init__(self):
         detail = "Пользователь не авторизован"

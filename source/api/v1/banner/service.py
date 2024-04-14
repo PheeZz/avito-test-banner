@@ -22,7 +22,7 @@ async def update_banner(
     banner_orm: models.BannerORM, banner: schemas.CreateUpdateBannerSchema
 ) -> None:
     await BannerDAO.update_banner(banner_orm, banner)
-    await BannerDAO.update_relation_banner_tag(banner_orm.id, banner.tag_ids)
+    await BannerDAO.update_relation_banner_tag(banner_orm, banner.tag_ids)
 
 
 async def get_user_banner(
@@ -58,7 +58,7 @@ async def get_banners(
                 "text": banner["text"],
                 "url": banner["url"],
             },
-            "active": banner["active"],
+            "is_active": banner["active"],
             "created_at": banner["created_at"],
             "updated_at": banner["updated_at"],
             "tag_ids": banner["tag_ids"],
