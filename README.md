@@ -12,6 +12,7 @@
   - [Конфигурация линтера flake8 (setup.cfg)](#конфигурация-линтера-flake8-setupcfg)
   - [Конфигурация форматтера black и isort (pyproject.toml)](#конфигурация-форматтера-black-и-isort-pyprojecttoml)
   - [Структура проекта](#структура-проекта)
+  - [Контакты](#контакты)
 
 ## Описание и стек
 Сервис представляет собой API для работы с баннерами, их тегами и фичами (целочисленные значения). Техническое задание находится в файле [task.md](./docs/task.md).<br>
@@ -403,3 +404,7 @@ include = '\.pyi?$' # Включаемые файлы (regex)
     └── middleware
         └── request_process_time_log.py # Middleware для логирования времени обработки запроса
 ```
+
+## Контакты
+- Email: jagubkoff@gmail.com
+- Telegram: https://t.me/pheezz
