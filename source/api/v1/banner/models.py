@@ -61,7 +61,7 @@ class BannerORM(BaseORM):
         string_500,
         nullable=False,
     )
-    is_active: Mapped[bool] = mapped_column(
+    active: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,
     )

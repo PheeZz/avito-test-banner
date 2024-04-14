@@ -7,4 +7,3 @@ class BaseORM(DeclarativeBase):
     """
 
     __table_args__ = {"schema": "public"}
-    pass

@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -20,7 +22,7 @@ class ContentSchema(BaseModel):
     )
 
 
-class CreateBannerSchema(BaseModel):
+class CreateUpdateBannerSchema(BaseModel):
     tag_ids: list[int] = Field(
         title="Идентификаторы тегов",
         description=(
@@ -37,9 +39,10 @@ class CreateBannerSchema(BaseModel):
     content: ContentSchema = Field(
         title="Содержимое баннера",
     )
-    is_active: bool = Field(
+    active: bool = Field(
         title="Активность баннера",
         examples=[True],
+        serialization_alias="is_active",
     )
 
     @field_validator("tag_ids")
@@ -50,6 +53,22 @@ class CreateBannerSchema(BaseModel):
             if tag_id <= 0:
                 raise ValueError("каждый tag_id должен быть больше 0")
         return v
+
+
+class BannerFullInfoSchema(CreateUpdateBannerSchema):
+    banner_id: int = Field(
+        title="Идентификатор баннера",
+        examples=[1],
+        gt=0,
+    )
+    created_at: datetime = Field(
+        title="Дата создания баннера",
+        description="Дата в формате ISO",
+    )
+    updated_at: datetime = Field(
+        title="Дата обновления баннера",
+        description="Дата в формате ISO",
+    )
 
 
 class BannerSuccessfullyCreatedSchema(BaseModel):
@@ -109,4 +128,14 @@ class InternalErrorSchema(BaseModel):
         title="Сообщение об ошибке",
         description="Внутренняя ошибка сервера",
         examples=["Внутренняя ошибка сервера"],
+    )
+
+
+class ErrorValueMustBeGTEZeroSchema(BaseModel):
+    """Code: 400"""
+
+    detail: str = Field(
+        title="Значение должно быть не меньше 0",
+        description="Значение должно быть не меньше 0",
+        examples=["Значение должно быть не меньше 0"],
     )

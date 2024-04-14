@@ -33,32 +33,3 @@ async def get_admin_token():
         headers=header,
         status_code=status.HTTP_200_OK,
     )
-
-
-@router.get(
-    "/user",
-    name="Установка токена пользователя",
-    responses={
-        200: {
-            "description": "Токен ПОЛЬЗОВАТЕЛЯ содержится в headers",
-            "content": {
-                "application/json": {
-                    "example": {"message": "Токен ПОЛЬЗОВАТЕЛЯ содержится в headers"}
-                }
-            },
-            "headers": {
-                "token": {
-                    "description": "Токен пользователя",
-                    "type": "string",
-                }
-            },
-        }
-    },
-)
-async def get_user_token():
-    header = {"token": constants.USER_TOKEN}
-    return JSONResponse(
-        content={"message": "Токен ПОЛЬЗОВАТЕЛЯ содержится в headers"},
-        headers=header,
-        status_code=status.HTTP_200_OK,
-    )

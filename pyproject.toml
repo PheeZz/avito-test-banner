@@ -10,10 +10,12 @@ python = "^3.11"
 fastapi = {extras = ["all"], version = "^0.110.1"}
 asyncpg = "^0.29.0"
 sqlalchemy = "^2.0.29"
-redis = "^5.0.3"
 alembic = "^1.13.1"
 loguru = "^0.7.2"
 pytz = "^2024.1"
+fastapi-cache2 = {extras = ["redis"], version = "^0.2.1"}
+redis = "~4"
+requests = "^2.31.0"
 
 
 [tool.poetry.group.dev.dependencies]

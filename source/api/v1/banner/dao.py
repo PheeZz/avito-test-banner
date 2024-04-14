@@ -1,7 +1,9 @@
+from datetime import datetime
 from logging import getLogger
 from typing import Iterable
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
+from sqlalchemy.orm import aliased
 
 from source.database import async_session_factory
 
@@ -12,19 +14,117 @@ logger = getLogger(__name__)
 
 class BannerDAO:
     @classmethod
-    async def create_banner(cls, banner: schemas.CreateBannerSchema) -> int:
+    async def create_banner(cls, banner: schemas.CreateUpdateBannerSchema) -> int:
         async with async_session_factory() as session:
             async with session.begin():
                 banner_orm = models.BannerORM(
                     title=banner.content.title,
                     text=banner.content.text,
                     url=banner.content.url,
-                    is_active=banner.is_active,
+                    active=banner.active,
                     feature_id=banner.feature_id,
                 )
                 session.add(banner_orm)
                 await session.flush()
                 return banner_orm.id
+
+    @classmethod
+    async def get_banner_by_id(cls, banner_id: int) -> models.BannerORM | None:
+        async with async_session_factory() as session:
+            async with session.begin():
+                banner_orm = await session.execute(
+                    select(models.BannerORM).filter(models.BannerORM.id == banner_id)
+                )
+                return banner_orm.scalar_one_or_none()
+
+    @classmethod
+    async def get_banners(
+        cls, tag_id: int | None, feature_id: int | None, limit: int, offset: int
+    ) -> list[dict[str, str | int | bool | datetime]] | None:
+        async with async_session_factory() as session:
+            async with session.begin():
+                b = aliased(models.BannerORM)
+                bt = aliased(models.BannerTagORM)
+
+                query = (
+                    select(b, bt)
+                    .join(bt, b.id == bt.banner_id)
+                    .filter(b.feature_id == feature_id if feature_id else True)
+                    .filter(bt.tag_id == tag_id if tag_id else True)
+                    .limit(limit)
+                    .offset(offset)
+                )
+
+                unsorted_data = await session.execute(query)
+                unsorted_data = unsorted_data.all()
+                if not unsorted_data:
+                    return None
+                sorted_data = []
+
+                for banner, banner_tag in unsorted_data:
+                    for sorted_banner in sorted_data:
+                        if sorted_banner["id"] == banner_tag.banner_id:
+                            sorted_banner["tag_ids"].append(banner_tag.tag_id)
+                            break
+                    else:
+                        sorted_data.append(
+                            {
+                                "id": banner.id,
+                                "title": banner.title,
+                                "text": banner.text,
+                                "url": banner.url,
+                                "active": banner.active,
+                                "created_at": banner.created_at,
+                                "updated_at": banner.updated_at,
+                                "tag_ids": [banner_tag.tag_id],
+                                "feature_id": banner.feature_id,
+                            }
+                        )
+                return sorted_data
+
+    @classmethod
+    async def get_banner_by_tag_and_feature(
+        cls, feature_id: int, tag_id: int
+    ) -> models.BannerORM | None:
+        async with async_session_factory() as session:
+            async with session.begin():
+                b = aliased(models.BannerORM)
+                bt = aliased(models.BannerTagORM)
+
+                query = (
+                    select(b)
+                    .join(bt, b.id == bt.banner_id)
+                    .filter(b.feature_id == feature_id)
+                    .filter(bt.tag_id == tag_id)
+                )
+
+                banner_orm = await session.execute(query)
+                banner_orm = banner_orm.scalar_one_or_none()
+                session.expunge(banner_orm)
+
+                return banner_orm
+
+    @classmethod
+    async def update_banner(
+        banner_orm: models.BannerORM, banner: schemas.CreateUpdateBannerSchema
+    ) -> None:
+        async with async_session_factory() as session:
+            async with session.begin():
+                banner_orm.title = banner.content.title
+                banner_orm.text = banner.content.text
+                banner_orm.url = banner.content.url
+                banner_orm.active = banner.active
+                banner_orm.feature_id = banner.feature_id
+                await session.flush()
+                return
+
+    @classmethod
+    async def delete_banner(cls, banner_orm: models.BannerORM) -> None:
+        async with async_session_factory() as session:
+            async with session.begin():
+                await session.delete(banner_orm)
+                await session.flush()
+                return
 
     @classmethod
     async def create_tag(cls, tag_name: str = "some_tag_name") -> models.TagORM:
@@ -47,7 +147,7 @@ class BannerDAO:
                 return tag_orm.scalar_one_or_none()
 
     @classmethod
-    async def create_tag_with_id(cls, tag_id: int) -> models.TagORM:
+    async def create_tag_with_id(cls, tag_id: int) -> int:
         async with async_session_factory() as session:
             async with session.begin():
                 current_tag_max_id = await cls._get_current_tag_max_id()
@@ -58,7 +158,7 @@ class BannerDAO:
                 ]
                 session.add_all(tags)
                 await session.flush()
-                return tags[-1]
+                return tags[-1].id
 
     @classmethod
     async def _get_current_tag_max_id(cls) -> int:
@@ -116,4 +216,21 @@ class BannerDAO:
                     )
                     session.add(relation_banner_feature_orm)
                 await session.flush()
+                return
+
+    @classmethod
+    async def update_relation_banner_tag(
+        cls,
+        banner_orm: models.BannerORM,
+        tag_id: int | Iterable[int],
+    ) -> None:
+        async with async_session_factory() as session:
+            async with session.begin():
+                await session.execute(
+                    delete(models.BannerTagORM).filter(
+                        models.BannerTagORM.banner_id == banner_orm.id
+                    )
+                )
+                await session.flush()
+                await cls.create_relation_banner_tag(banner_orm.id, tag_id)
                 return

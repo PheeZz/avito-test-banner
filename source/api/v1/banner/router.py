@@ -1,8 +1,8 @@
-from typing import Annotated
+from typing import Literal
 
-from fastapi import APIRouter, Depends, Header, Response, status
+from fastapi import APIRouter, Depends, status
 
-from . import dependencies, exceptions, schemas, service
+from . import dependencies, schemas, service
 
 router = APIRouter(tags=["Banner"])
 
@@ -10,26 +10,97 @@ router = APIRouter(tags=["Banner"])
 @router.get(
     "/user_banner",
     name="Получение баннера для пользователя",
+    response_model=schemas.ContentSchema,
+    status_code=status.HTTP_200_OK,
+    dependencies=[
+        Depends(dependencies.check_user_token_header),
+    ],
+    responses={
+        status.HTTP_401_UNAUTHORIZED: {
+            "description": "Пользователь не авторизован",
+            "model": schemas.ErrorUserNotAuthorizedSchema,
+        },
+        status.HTTP_403_FORBIDDEN: {
+            "description": "Пользователь не имеет доступа",
+            "model": schemas.ErrorUserHaveNoAccessSchema,
+        },
+        status.HTTP_404_NOT_FOUND: {
+            "description": "Баннер не найден",
+            "model": schemas.ErrorBannerNotFoundSchema,
+        },
+        status.HTTP_500_INTERNAL_SERVER_ERROR: {
+            "description": "Внутренняя ошибка сервера",
+            "model": schemas.InternalErrorSchema,
+        },
+    },
 )
 async def get_user_banner(
     tag_id: int,
     feature_id: int,
     use_last_revision: bool = False,
-    token: Annotated[str | None, Header()] = None,  # user token
-): ...
+    user_type: Literal["admin", "user"] = Depends(dependencies.get_user_type_by_token),
+):
+    if use_last_revision:
+        banner = await service.get_cached_user_banner(
+            tag_id=tag_id,
+            feature_id=feature_id,
+            user_type=user_type,
+        )
+    else:
+        banner = await service.get_user_banner(
+            tag_id=tag_id,
+            feature_id=feature_id,
+            user_type=user_type,
+        )
+    return schemas.ContentSchema(
+        title=banner.title,
+        text=banner.text,
+        url=banner.url,
+    )
 
 
 @router.get(
     "/banner",
     name="Получение всех баннеров с фильтрацией по фиче и/или тегу",
+    status_code=status.HTTP_200_OK,
+    response_model=list[schemas.BannerFullInfoSchema],
+    responses={
+        status.HTTP_400_BAD_REQUEST: {
+            "description": "Значение должно быть не меньше 0",
+            "model": schemas.ErrorValueMustBeGTEZeroSchema,
+        },
+        status.HTTP_401_UNAUTHORIZED: {
+            "description": "Пользователь не авторизован",
+            "model": schemas.ErrorUserNotAuthorizedSchema,
+        },
+        status.HTTP_403_FORBIDDEN: {
+            "description": "Пользователь не имеет доступа",
+            "model": schemas.ErrorUserHaveNoAccessSchema,
+        },
+        status.HTTP_500_INTERNAL_SERVER_ERROR: {
+            "description": "Внутренняя ошибка сервера",
+            "model": schemas.InternalErrorSchema,
+        },
+    },
+    dependencies=[
+        Depends(dependencies.check_admin_token_header),
+    ],
 )
 async def get_banner(
-    token: Annotated[str | None, Header()] = None,  # admin token
     feature_id: int = None,
     tag_id: int = None,
-    limit: int = 10,
-    offset: int = 0,
-): ...
+    limit: int = Depends(dependencies.check_limit_gt_zero),
+    offset: int = Depends(dependencies.check_offset_gte_zero),
+):
+    banners = await service.get_banners(
+        feature_id=feature_id,
+        tag_id=tag_id,
+        limit=limit,
+        offset=offset,
+    )
+    if not banners:
+        return []
+    return [schemas.BannerFullInfoSchema(**banner) for banner in banners]
 
 
 @router.post(
@@ -62,7 +133,7 @@ async def get_banner(
     ],
 )
 async def post_new_banner(
-    banner: schemas.CreateBannerSchema,
+    banner: schemas.CreateUpdateBannerSchema,
 ):
     """
     Допустимо использование только с админским токеном
@@ -74,18 +145,74 @@ async def post_new_banner(
 @router.patch(
     "/banner/{id}",
     name="Обновление содержимого баннера",
+    status_code=status.HTTP_200_OK,
+    dependencies=[
+        Depends(dependencies.add_tags_if_not_exist),
+        Depends(dependencies.add_feature_if_not_exist),
+        Depends(dependencies.check_admin_token_header),
+    ],
+    responses={
+        status.HTTP_200_OK: {
+            "description": "Баннер успешно обновлен",
+        },
+        status.HTTP_401_UNAUTHORIZED: {
+            "description": "Пользователь не авторизован",
+            "model": schemas.ErrorUserNotAuthorizedSchema,
+        },
+        status.HTTP_403_FORBIDDEN: {
+            "description": "Пользователь не имеет доступа",
+            "model": schemas.ErrorUserHaveNoAccessSchema,
+        },
+        status.HTTP_404_NOT_FOUND: {
+            "description": "Баннер не найден",
+            "model": schemas.ErrorBannerNotFoundSchema,
+        },
+        status.HTTP_500_INTERNAL_SERVER_ERROR: {
+            "description": "Внутренняя ошибка сервера",
+            "model": schemas.InternalErrorSchema,
+        },
+    },
 )
 async def patch_banner(
-    banner: schemas.CreateBannerSchema,
-    token=Depends(dependencies.check_admin_token_header),  # admin token,
-): ...
+    banner: schemas.CreateUpdateBannerSchema,
+    banner_orm=Depends(dependencies.get_banner_by_id),
+):
+    await service.update_banner(
+        banner_orm=banner_orm,
+        banner=banner,
+    )
 
 
 @router.delete(
     "/banner/{id}",
     name="Удаление баннера по идентификатору",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[
+        Depends(dependencies.check_admin_token_header),
+    ],
+    responses={
+        status.HTTP_204_NO_CONTENT: {
+            "description": "Баннер успешно удален",
+        },
+        status.HTTP_401_UNAUTHORIZED: {
+            "description": "Пользователь не авторизован",
+            "model": schemas.ErrorUserNotAuthorizedSchema,
+        },
+        status.HTTP_403_FORBIDDEN: {
+            "description": "Пользователь не имеет доступа",
+            "model": schemas.ErrorUserHaveNoAccessSchema,
+        },
+        status.HTTP_404_NOT_FOUND: {
+            "description": "Баннер не найден",
+            "model": schemas.ErrorBannerNotFoundSchema,
+        },
+        status.HTTP_500_INTERNAL_SERVER_ERROR: {
+            "description": "Внутренняя ошибка сервера",
+            "model": schemas.InternalErrorSchema,
+        },
+    },
 )
 async def delete_banner(
-    id: int,
-    token=Depends(dependencies.check_admin_token_header),  # admin token,
-): ...
+    banner_orm=Depends(dependencies.get_banner_by_id),
+) -> None:
+    await service.delete_banner(banner_orm=banner_orm)

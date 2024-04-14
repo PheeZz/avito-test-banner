@@ -7,7 +7,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi_cache import FastAPICache
+from fastapi_cache.backends.redis import RedisBackend
+from redis import asyncio as aioredis
 
+from config import configuration
 from customize_logger import CustomizeLogger
 from source.api.v1.banner.router import router as banner_router
 from source.api.v1.set_header.router import router as set_header_router
@@ -47,6 +51,16 @@ app.add_middleware(
 )
 
 
+@app.on_event("startup")
+async def startup_event():
+    redis = aioredis.from_url(
+        url=configuration.REDIS_URL,
+        encoding="utf-8",
+        decode_responses=True,
+    )
+    FastAPICache.init(RedisBackend(redis), prefix="fastapi-cache")
+
+
 @app.get("/")
 async def root():
     return RedirectResponse(
@@ -73,11 +87,12 @@ async def get_swagger_documentation() -> HTMLResponse:
 )
 async def openapi() -> dict[str, Any]:
     return get_openapi(
-        title="Avito banner API",
+        title="Сервис баннеров Avito",
         servers=[
+            {"url": f"http://{configuration.EXTERNAL_IP}:8871", "description": "Remote server"},
             {"url": "http://127.0.0.1:8000", "description": "Local DEV server"},
         ],
-        version="0.1.0",
+        version="1.0.0",
         routes=app.routes,
     )
 

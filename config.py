@@ -1,9 +1,20 @@
 from logging import getLogger
 from typing import Literal
 
+import requests
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 logger = getLogger(__name__)
+
+
+def get_current_external_ip() -> str | None:
+    try:
+        response = requests.get("https://api.ipify.org?format=json")
+        response.raise_for_status()
+    except requests.RequestException as e:
+        logger.error(f"Error while getting external IP: {e}")
+        return None
+    return response.json()["ip"]
 
 
 class Config(BaseSettings):
@@ -38,6 +49,12 @@ class Config(BaseSettings):
 
     REDIS_HOST: str
     REDIS_PORT: int
+
+    EXTERNAL_IP: str = get_current_external_ip()
+
+    @property
+    def REDIS_URL(self):
+        return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/0"
 
     model_config = SettingsConfigDict(env_file=".env", env_ignore_empty=False)
 

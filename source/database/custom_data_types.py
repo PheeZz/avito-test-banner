@@ -1,8 +1,8 @@
 import datetime
 
+import pytz
 from sqlalchemy import DateTime, String
 from sqlalchemy.orm import MappedColumn, mapped_column
-import pytz
 
 
 def utc_now() -> datetime.datetime:
