@@ -139,3 +139,15 @@ class ErrorValueMustBeGTEZeroSchema(BaseModel):
         description="Значение должно быть не меньше 0",
         examples=["Значение должно быть не меньше 0"],
     )
+
+
+class ErrorNoFeatureOrTagIdProvidedSchema(BaseModel):
+    """Code: 400"""
+
+    detail: str = Field(
+        title="Сообщение об ошибке",
+        description="Не переданы идентификаторы фичи или тега.",
+        examples=[
+            "Не переданы идентификаторы фичи или тега. Хотя бы один параметр должен быть передан"
+        ],
+    )

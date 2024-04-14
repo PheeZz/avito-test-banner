@@ -5,7 +5,7 @@ from fastapi_cache.decorator import cache
 
 from . import models, schemas
 from .dao import BannerDAO
-from .exceptions import ErrorBannerNotActive, ErrorBannerNotFound
+from .exceptions import ErrorBannerNotActive, ErrorBannerNotFound, ErrorNoFeatureOrTagIdProvided
 
 
 async def create_banner(banner: schemas.CreateUpdateBannerSchema) -> int:
@@ -66,3 +66,9 @@ async def get_banners(
         }
         for banner in full_banners_info
     ]
+
+
+async def delete_banners_by_feat_or_tag_id(feature_id: int, tag_id: int) -> None:
+    if not feature_id and not tag_id:
+        raise ErrorNoFeatureOrTagIdProvided
+    await BannerDAO.delete_banners_by_feat_or_tag_id(feature_id, tag_id)

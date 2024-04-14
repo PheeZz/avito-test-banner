@@ -3,6 +3,7 @@ from typing import Literal
 from fastapi import APIRouter, Depends, status
 
 from . import dependencies, schemas, service
+from .constants import INTERNAL_SERVER_ERROR_SWAGGER_RESPONSE
 
 router = APIRouter(tags=["Banner"])
 
@@ -28,10 +29,7 @@ router = APIRouter(tags=["Banner"])
             "description": "Баннер не найден",
             "model": schemas.ErrorBannerNotFoundSchema,
         },
-        status.HTTP_500_INTERNAL_SERVER_ERROR: {
-            "description": "Внутренняя ошибка сервера",
-            "model": schemas.InternalErrorSchema,
-        },
+        status.HTTP_500_INTERNAL_SERVER_ERROR: INTERNAL_SERVER_ERROR_SWAGGER_RESPONSE,
     },
 )
 async def get_user_banner(
@@ -77,10 +75,7 @@ async def get_user_banner(
             "description": "Пользователь не имеет доступа",
             "model": schemas.ErrorUserHaveNoAccessSchema,
         },
-        status.HTTP_500_INTERNAL_SERVER_ERROR: {
-            "description": "Внутренняя ошибка сервера",
-            "model": schemas.InternalErrorSchema,
-        },
+        status.HTTP_500_INTERNAL_SERVER_ERROR: INTERNAL_SERVER_ERROR_SWAGGER_RESPONSE,
     },
     dependencies=[
         Depends(dependencies.check_admin_token_header),
@@ -121,10 +116,7 @@ async def get_banner(
             "description": "Пользователь не имеет доступа",
             "model": schemas.ErrorUserHaveNoAccessSchema,
         },
-        status.HTTP_500_INTERNAL_SERVER_ERROR: {
-            "description": "Внутренняя ошибка сервера",
-            "model": schemas.InternalErrorSchema,
-        },
+        status.HTTP_500_INTERNAL_SERVER_ERROR: INTERNAL_SERVER_ERROR_SWAGGER_RESPONSE,
     },
     dependencies=[
         Depends(dependencies.add_tags_if_not_exist),
@@ -167,10 +159,7 @@ async def post_new_banner(
             "description": "Баннер не найден",
             "model": schemas.ErrorBannerNotFoundSchema,
         },
-        status.HTTP_500_INTERNAL_SERVER_ERROR: {
-            "description": "Внутренняя ошибка сервера",
-            "model": schemas.InternalErrorSchema,
-        },
+        status.HTTP_500_INTERNAL_SERVER_ERROR: INTERNAL_SERVER_ERROR_SWAGGER_RESPONSE,
     },
 )
 async def patch_banner(
@@ -206,13 +195,58 @@ async def patch_banner(
             "description": "Баннер не найден",
             "model": schemas.ErrorBannerNotFoundSchema,
         },
-        status.HTTP_500_INTERNAL_SERVER_ERROR: {
-            "description": "Внутренняя ошибка сервера",
-            "model": schemas.InternalErrorSchema,
-        },
+        status.HTTP_500_INTERNAL_SERVER_ERROR: INTERNAL_SERVER_ERROR_SWAGGER_RESPONSE,
     },
 )
 async def delete_banner(
     banner_orm=Depends(dependencies.get_banner_by_id),
 ) -> None:
     await service.delete_banner(banner_orm=banner_orm)
+
+
+@router.delete(
+    "/banner/",
+    name="Удаление баннера по feature_id и/или tag_id",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[
+        Depends(dependencies.check_admin_token_header),
+    ],
+    responses={
+        status.HTTP_204_NO_CONTENT: {
+            "description": "Баннер(ы) успешно удален(ы)",
+        },
+        status.HTTP_400_BAD_REQUEST: {
+            "description": "Не переданы идентификаторы фичи или тега.",
+            "model": schemas.ErrorNoFeatureOrTagIdProvidedSchema,
+        },
+        status.HTTP_401_UNAUTHORIZED: {
+            "description": "Пользователь не авторизован",
+            "model": schemas.ErrorUserNotAuthorizedSchema,
+        },
+        status.HTTP_403_FORBIDDEN: {
+            "description": "Пользователь не имеет доступа",
+            "model": schemas.ErrorUserHaveNoAccessSchema,
+        },
+        status.HTTP_404_NOT_FOUND: {
+            "description": "Баннер не найден",
+            "model": schemas.ErrorBannerNotFoundSchema,
+        },
+        status.HTTP_500_INTERNAL_SERVER_ERROR: {
+            "description": "Внутренняя ошибка сервера",
+            "content": {
+                "text/plain": {
+                    "example": "Internal Server Error",
+                },
+            },
+        },
+    },
+)
+async def delete_banner_by_feat_or_tag_id(
+    feature_id: int = None,
+    tag_id: int = None,
+):
+    await service.delete_banners_by_feat_or_tag_id(
+        feature_id=feature_id,
+        tag_id=tag_id,
+    )
+    return None

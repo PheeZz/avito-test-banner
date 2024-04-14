@@ -127,6 +127,29 @@ class BannerDAO:
                 return
 
     @classmethod
+    async def delete_banners_by_feat_or_tag_id(
+        cls, feature_id: int | None, tag_id: int | None
+    ) -> None:
+        async with async_session_factory() as session:
+            async with session.begin():
+                b = aliased(models.BannerORM)
+                bt = aliased(models.BannerTagORM)
+
+                query = (
+                    select(b)
+                    .join(bt, b.id == bt.banner_id)
+                    .filter(b.feature_id == feature_id if feature_id else True)
+                    .filter(bt.tag_id == tag_id if tag_id else True)
+                )
+
+                res = await session.execute(query)
+                banners = res.scalars().all()
+                for banner in banners:
+                    await session.delete(banner)
+                await session.flush()
+                return
+
+    @classmethod
     async def create_tag(cls, tag_name: str = "some_tag_name") -> models.TagORM:
         async with async_session_factory() as session:
             async with session.begin():

@@ -51,3 +51,14 @@ class ErrorValueMustBeGTEZero(HTTPException):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=detail,
         )
+
+
+class ErrorNoFeatureOrTagIdProvided(HTTPException):
+    def __init__(self):
+        detail = (
+            "Не переданы идентификаторы фичи или тега. Хотя бы один параметр должен быть передан"
+        )
+        super().__init__(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=detail,
+        )
